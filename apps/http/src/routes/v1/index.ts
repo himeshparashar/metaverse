@@ -2,8 +2,10 @@ import { Router } from "express";
 import { userRouter } from "./user";
 import { spaceRouter } from "./space";
 import { adminRouter } from "./admin";
-import { SignupSchema } from "../../types";
+import { SigninSchema, SignupSchema } from "../../types";
 import client from "@repo/db/client";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 export const router = Router();
 
@@ -14,11 +16,13 @@ router.post("/signup", async (req, res) => {
     return;
   }
 
+  const hashedPassword = await bcrypt.hash(parsedData.data.password, 10);
+
   try {
     const user = await client.user.create({
       data: {
         username: parsedData.data.username,
-        password: parsedData.data.password,
+        password: hashedPassword,
         role: parsedData.data.type === "admin" ? "Admin" : "User",
       },
     });
@@ -30,8 +34,38 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-router.post("/signin", (req, res) => {
-  res.send("Signin route");
+router.post("/signin", async (req, res) => {
+  const parsedData = SigninSchema.safeParse(req.body);
+  if (!parsedData.success) {
+    res.status(403).json({ error: parsedData.error.message });
+    return;
+  }
+
+  const user = await client.user.findUnique({
+    where: {
+      username: parsedData.data.username,
+    },
+  });
+
+  if (!user) {
+    res.status(403).json({ error: "Invalid username or password" });
+    return;
+  }
+
+  const isValidPassword = await bcrypt.compare(
+    parsedData.data.password,
+    user.password
+  );
+  if (!isValidPassword) {
+    res.status(403).json({ error: "Invalid password" });
+    return;
+  }
+
+  const token = jwt.sign({ userId: user.id }, JWT_PASSWORD, {
+    expiresIn: "1h",
+  });
+
+  res.json({ token: token });
 });
 
 router.get("/elements", (req, res) => {
