@@ -1,24 +1,28 @@
-import { z } from "zod";
+import z from "zod";
 
 export const SignupSchema = z.object({
-  username: z.string().email(),
-  password: z.string().min(8),
+  username: z.string(),
+  password: z.string(),
   type: z.enum(["user", "admin"]),
 });
 
 export const SigninSchema = z.object({
-  username: z.string().email(),
-  password: z.string().min(8),
+  username: z.string(),
+  password: z.string(),
 });
 
 export const UpdateMetadataSchema = z.object({
-  avatarId: z.string().min(1),
+  avatarId: z.string(),
 });
 
 export const CreateSpaceSchema = z.object({
-  name: z.string().min(1),
-  dimensions: z.string().regex(/[0-9]{1,4}x[0-9]{1,4}/),
-  mapId: z.string().min(1),
+  name: z.string(),
+  dimensions: z.string().regex(/^[0-9]{1,4}x[0-9]{1,4}$/),
+  mapId: z.string().optional(),
+});
+
+export const DeleteElementSchema = z.object({
+  id: z.string(),
 });
 
 export const AddElementSchema = z.object({
@@ -45,9 +49,10 @@ export const CreateAvatarSchema = z.object({
 });
 
 export const CreateMapSchema = z.object({
-  thumbnailUrl: z.string(),
-  dimensions: z.string().regex(/[0-9]{1,4}x[0-9]{1,4}/),
-  defaultElementId: z.array(
+  thumbnail: z.string(),
+  dimensions: z.string().regex(/^[0-9]{1,4}x[0-9]{1,4}$/),
+  name: z.string(),
+  defaultElements: z.array(
     z.object({
       elementId: z.string(),
       x: z.number(),
@@ -55,3 +60,12 @@ export const CreateMapSchema = z.object({
     })
   ),
 });
+
+declare global {
+  namespace Express {
+    export interface Request {
+      role?: "Admin" | "User";
+      userId?: string;
+    }
+  }
+}
